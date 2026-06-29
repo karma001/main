@@ -1,4 +1,4 @@
-const CACHE_NAME = "kirakira-pwa-v24-20260629";
+const CACHE_NAME = "kirakira-pwa-v25-20260629";
 const ASSETS = [
   "./",
   "./index.html",
