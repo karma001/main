@@ -1,0 +1,1078 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>きらきら作例シミュレーター</title>
+<meta name="theme-color" content="#ff72ad">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="きらきら作例">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./icons/icon-192.png" sizes="192x192">
+<link rel="apple-touch-icon" href="./icons/icon-192.png">
+
+<style>
+  :root{
+    --bg1:#fff7d6;
+    --bg2:#e6f8ff;
+    --bg3:#f7e8ff;
+    --panel:#ffffffee;
+    --text:#342846;
+    --muted:#746981;
+    --pink:#ff72ad;
+    --blue:#43b8ff;
+    --yellow:#ffd23f;
+    --green:#69d58f;
+    --purple:#a78bfa;
+    --shadow:0 12px 28px rgba(74,55,112,.16);
+  }
+  *{box-sizing:border-box}
+  html,body{min-height:100%}
+  body{
+    margin:0;
+    font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
+    color:var(--text);
+    background:
+      radial-gradient(circle at 10% 12%, rgba(255,255,255,.9) 0 9px, transparent 10px),
+      radial-gradient(circle at 88% 18%, rgba(255,255,255,.7) 0 6px, transparent 7px),
+      linear-gradient(135deg,var(--bg1),var(--bg2) 50%,var(--bg3));
+    background-size:155px 155px, 210px 210px, auto;
+    overflow-x:hidden;
+  }
+  button,select,input{font:inherit}
+  button,select,input[type="number"]{
+    border:2px solid #ffd6e8;
+    border-radius:999px;
+    background:#fff;
+    color:var(--text);
+    font-weight:900;
+    box-shadow:0 5px 0 rgba(144,99,168,.20);
+  }
+  button{
+    min-height:48px;
+    padding:10px 14px;
+    cursor:pointer;
+  }
+  button:active{transform:translateY(3px);box-shadow:0 2px 0 rgba(144,99,168,.20)}
+  button.primary{
+    color:#fff;
+    background:linear-gradient(135deg,#ff72ad,#ff9f1c);
+    border-color:#ffb5d1;
+    text-shadow:0 1px 0 rgba(0,0,0,.14);
+  }
+  button.blue{
+    color:#fff;
+    background:linear-gradient(135deg,#43b8ff,#7bd88f);
+    border-color:#a8e7ff;
+    text-shadow:0 1px 0 rgba(0,0,0,.13);
+  }
+  button.soft{background:linear-gradient(135deg,#f4fbff,#fff);border-color:#c9efff}
+  button.danger{background:#fff6fb;border-color:#ffb5d1}
+  select,input[type="number"]{min-height:44px;padding:7px 12px}
+  input[type="number"]{width:5.8em;text-align:right;border-radius:16px;background:#fbfeff}
+
+  .screen{display:none;min-height:100dvh;padding:12px;}
+  .screen.active{display:flex;flex-direction:column;gap:12px;}
+  .topbar{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    max-width:1180px;
+    width:100%;
+    margin:0 auto;
+  }
+  h1{font-size:1.24rem;margin:0;display:flex;align-items:center;gap:8px;line-height:1.2}
+  h1 .bubble{
+    display:inline-flex;align-items:center;justify-content:center;
+    width:36px;height:36px;border-radius:999px;background:#fff;box-shadow:0 5px 14px rgba(74,55,112,.12);
+  }
+  .sub{margin:0;color:var(--muted);font-size:.92rem;font-weight:700}
+  .panel{
+    max-width:1180px;
+    width:100%;
+    margin:0 auto;
+    background:var(--panel);
+    border:2px solid rgba(255,255,255,.78);
+    border-radius:24px;
+    box-shadow:var(--shadow);
+    position:relative;
+    overflow:hidden;
+  }
+  .stage{padding:8px;flex:0 0 auto;min-height:0;display:flex;}
+  svg{
+    width:100%;
+    border:2px solid rgba(255,255,255,.96);
+    border-radius:20px;
+    background:
+      radial-gradient(circle at 20% 20%, rgba(255,255,255,.82), transparent 28%),
+      linear-gradient(135deg,#fffdf7,#f3fbff 55%,#fff2fb);
+    touch-action:none;
+    user-select:none;
+    display:block;
+    box-shadow:inset 0 0 0 1px rgba(111,203,255,.2);
+  }
+  /* 編集画面では、グリッドを大きくしすぎない。子供がボタンまで一目で見えるサイズに抑える。 */
+  #editScreen .topbar,
+  #editScreen .panel,
+  #editScreen .dock,
+  #editScreen .statusLine{max-width:760px;}
+  #simScreen .topbar,
+  #simScreen .panel,
+  #simScreen .simControls,
+  #simScreen .statusLine{max-width:900px;}
+  #svg{height:min(54dvh,390px);min-height:300px;}
+  #simSvg{height:min(58dvh,430px);min-height:320px;background:linear-gradient(135deg,#fff,#f6fcff 55%,#fff7fb)}
+
+  .dock{
+    max-width:1180px;
+    width:100%;
+    margin:0 auto;
+    display:grid;
+    grid-template-columns:repeat(5,1fr);
+    gap:8px;
+  }
+  .dock button{font-size:1rem;padding:10px 8px;}
+  .statusLine{
+    max-width:1180px;
+    width:100%;
+    margin:0 auto;
+    min-height:24px;
+    color:#5f536d;
+    font-size:.92rem;
+    font-weight:800;
+    padding:0 4px;
+  }
+  .simControls{
+    max-width:1180px;
+    width:100%;
+    margin:0 auto;
+    display:flex;
+    flex-wrap:wrap;
+    align-items:center;
+    gap:8px;
+  }
+  .pill{
+    display:inline-flex;
+    align-items:center;
+    gap:7px;
+    border:2px solid #ffe0ef;
+    border-radius:999px;
+    padding:6px 10px;
+    background:#fffafc;
+    min-height:48px;
+    box-shadow:0 3px 0 rgba(255,122,182,.15);
+    font-weight:900;
+  }
+  .simStatus{font-family:ui-monospace,Consolas,"SFMono-Regular",monospace;white-space:pre-wrap;color:#65576f}
+  .colorChoice{min-width:6.2em;text-align:center}
+  .colorChoice option[value="red"]{color:#ef4444}
+  .colorChoice option[value="blue"]{color:#2563eb}
+  .colorChoice option[value="yellow"]{color:#ca8a04}
+  .colorChoice option[value="green"]{color:#16a34a}
+  .colorChoice option[value="purple"]{color:#9333ea}
+  .colorChoice option[value="white"]{color:#64748b}
+
+
+  .blastHint{
+    animation:popText .55s ease-out both;
+  }
+  @keyframes popText{
+    from{opacity:0;transform:scale(.82)}
+    to{opacity:1;transform:scale(1)}
+  }
+
+
+  .topActions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+  .modalBackdrop{
+    position:fixed;inset:0;z-index:50;display:none;
+    align-items:center;justify-content:center;padding:16px;
+    background:rgba(48,35,66,.38);backdrop-filter:blur(3px);
+  }
+  .modalBackdrop.active{display:flex}
+  .modalCard{
+    width:min(720px,100%);max-height:88dvh;overflow:auto;
+    background:#ffffff; border:3px solid #ffe0ef; border-radius:28px;
+    box-shadow:0 18px 40px rgba(40,26,60,.24); padding:18px;
+  }
+  .modalCard h2{margin:0 0 8px;font-size:1.25rem}
+  .modalCard p{line-height:1.55;margin:.55em 0;font-weight:750;color:#5f536d}
+  .memoBox{
+    margin-top:10px;padding:14px;border-radius:18px;
+    background:#fff7fb;border:2px dashed #ffb5d1;
+    font-family:ui-monospace,Consolas,"SFMono-Regular",monospace;
+    white-space:pre-wrap;font-weight:800;color:#4b3d59;
+  }
+  .modalActions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;margin-top:14px}
+
+  @media (max-width: 760px){
+    .screen{padding:8px;gap:8px}
+    .topbar{align-items:flex-start}
+    h1{font-size:1.05rem}
+    .sub{display:none}
+    #svg{height:min(50dvh,340px);min-height:260px}
+    #simSvg{height:min(52dvh,360px);min-height:280px}
+    .dock{grid-template-columns:repeat(3,1fr);gap:7px}
+    .dock button{font-size:.92rem;min-height:46px}
+    .simControls{gap:6px}
+    .pill{font-size:.9rem;padding:5px 8px}
+  }
+</style>
+</head>
+<body>
+
+<section id="editScreen" class="screen active">
+  <div class="topbar">
+    <div>
+      <h1><span class="bubble">🧩</span>かたちを作る</h1>
+      <p class="sub">点をドラッグして形を作ります。完成したら「店員に見せる」で相談できます。</p>
+    </div>
+    <div class="topActions">
+      <button class="soft" onclick="showInstallGuide()">📱 ホーム追加</button>
+      <button class="blue" onclick="goSimulationScreen()">つぎ：くるっと見る ▶</button>
+    </div>
+  </div>
+
+  <div class="panel stage">
+    <svg id="svg" viewBox="0 0 900 560"></svg>
+  </div>
+
+  <div class="dock">
+    <button class="primary" onclick="insertAfterSelected()">＋ 点の追加</button>
+    <button class="danger" onclick="deleteSelected()">− 点の削除</button>
+    <button class="soft" onclick="zoom(0.8)">🔎 拡大</button>
+    <button class="soft" onclick="zoom(1.25)">🔍 縮小</button>
+    <button onclick="resetDefault()">↩ 初期化</button>
+  </div>
+  <div id="status" class="statusLine"></div>
+</section>
+
+<section id="simScreen" class="screen">
+  <div class="topbar">
+    <div>
+      <h1><span class="bubble">🎠</span>くるっとシミュレーション</h1>
+      <p class="sub">作った形を回転コピーします。完成画面をスクショして店員に見せられます。</p>
+    </div>
+    <button class="soft" onclick="goEditScreen()">◀ もどる</button>
+  </div>
+
+  <div class="simControls">
+    <span class="pill">コピー数 <input id="simCount" type="number" min="1" max="72" value="6"></span>
+    <span class="pill">図形のいろ
+      <select id="simColor" class="colorChoice">
+        <option value="red">赤</option>
+        <option value="blue" selected>青</option>
+        <option value="yellow">黄</option>
+        <option value="green">緑</option>
+        <option value="purple">紫</option>
+      </select>
+    </span>
+    <span class="pill">中央ビジュー
+      <select id="bijouColor" class="colorChoice">
+        <option value="red">赤</option>
+        <option value="blue">青</option>
+        <option value="yellow">黄</option>
+        <option value="green">緑</option>
+        <option value="purple">紫</option>
+        <option value="white" selected>白</option>
+      </select>
+    </span>
+    <button class="primary" onclick="runSimulation()">✨ スタート</button>
+    <button class="blue" onclick="showOrderMemo()">📋 店員に見せる</button>
+  </div>
+  <div id="simStatus" class="statusLine simStatus">まだ：✨ スタート を押してね。</div>
+
+  <div class="panel stage">
+    <svg id="simSvg" viewBox="0 0 900 560"></svg>
+  </div>
+</section>
+
+
+<div id="infoModal" class="modalBackdrop" onclick="modalBackdropClose(event)">
+  <div class="modalCard" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <h2 id="modalTitle">メモ</h2>
+    <div id="modalBody"></div>
+    <div class="modalActions">
+      <button class="soft" id="installPromptBtn" onclick="promptInstallApp()" style="display:none">ホーム画面に追加する</button>
+      <button class="primary" onclick="closeInfoModal()">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const SQ3 = Math.sqrt(3);
+const EPS = 1e-9;
+const SVG_NS = "http://www.w3.org/2000/svg";
+const SVG_W = 900;
+const SVG_H = 560;
+const SIM_W = 900;
+const SIM_H = 560;
+const POINT_COLORS = ["#ff5fa2", "#45b7ff", "#ffd23f", "#7bd88f", "#b388ff", "#ff9f1c", "#5eead4", "#ff7a59", "#9be7ff", "#f472b6"];
+const SIM_COLORS = {
+  red: "#ef4444",
+  blue: "#2563eb",
+  yellow: "#eab308",
+  green: "#16a34a",
+  purple: "#9333ea",
+  white: "#ffffff"
+};
+function pointColor(i){ return POINT_COLORS[((i % POINT_COLORS.length) + POINT_COLORS.length) % POINT_COLORS.length]; }
+function selectedSimColor(){
+  const key = document.getElementById("simColor")?.value || "blue";
+  return SIM_COLORS[key] || SIM_COLORS.blue;
+}
+function selectedBijouColor(){
+  const key = document.getElementById("bijouColor")?.value || "white";
+  return SIM_COLORS[key] || SIM_COLORS.white;
+}
+function selectedBijouName(){
+  const sel = document.getElementById("bijouColor");
+  return sel?.options?.[sel.selectedIndex]?.textContent || "白";
+}
+function selectedRoundRadius(){
+  return 70; // 角Rは固定値
+}
+
+let view = {cx: 0.75, cy: 0.433, scale: 120};
+let vertices = [
+  {u:0, v:0},
+  {u:1, v:0},
+  {u:1, v:1},
+  {u:0, v:1}
+];
+let selectedIndex = 0;
+let dragIndex = null;
+let lastPointer = null;
+let simAnimationId = null;
+let simHasResult = false;
+
+let deferredInstallPrompt = null;
+window.addEventListener("beforeinstallprompt", (ev) => {
+  ev.preventDefault();
+  deferredInstallPrompt = ev;
+});
+if("serviceWorker" in navigator && location.protocol !== "file:"){
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./sw.js").catch(() => {});
+  });
+}
+function modalBackdropClose(ev){ if(ev.target && ev.target.id === "infoModal") closeInfoModal(); }
+function openInfoModal(title, bodyHtml, showInstall=false){
+  document.getElementById("modalTitle").textContent = title;
+  document.getElementById("modalBody").innerHTML = bodyHtml;
+  const btn = document.getElementById("installPromptBtn");
+  btn.style.display = showInstall && deferredInstallPrompt ? "inline-flex" : "none";
+  document.getElementById("infoModal").classList.add("active");
+}
+function closeInfoModal(){ document.getElementById("infoModal").classList.remove("active"); }
+async function promptInstallApp(){
+  if(!deferredInstallPrompt) return;
+  const ev = deferredInstallPrompt;
+  deferredInstallPrompt = null;
+  ev.prompt();
+  try{ await ev.userChoice; }catch(e){}
+  closeInfoModal();
+}
+function showInstallGuide(){
+  const canPrompt = !!deferredInstallPrompt;
+  openInfoModal("ホーム画面に追加", `
+    <p><b>Android / Chrome</b>：メニューから「アプリをインストール」または「ホーム画面に追加」。ボタンが使える端末では下に追加ボタンが出ます。</p>
+    <p><b>iPhone / iPad</b>：Safariで開き、共有ボタンから「ホーム画面に追加」。</p>
+    <p>一度オンラインで開いておくと、次回以降は通信が弱い場所でも起動しやすくなります。店頭タブレットでは、イベント前に機内モードで起動確認してください。</p>
+    <div class="memoBox">店頭手順：URLを開く → ホーム画面に追加 → 一度起動 → 機内モードで再起動テスト</div>
+  `, canPrompt);
+}
+function htmlEscape(s){ return String(s).replace(/[&<>"']/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m])); }
+function showOrderMemo(){
+  const snapshot = readSimulationSnapshot();
+  if(!snapshot){ openInfoModal("店員に見せる", "<p>点が足りません。3点以上で形を作ってください。</p>"); return; }
+  const simName = document.getElementById("simColor")?.selectedOptions?.[0]?.textContent || "";
+  const bijouName = selectedBijouName();
+  const ptsText = snapshot.pts.map(p => `${p.name}=(${p.u},${p.v})`).join(" / ");
+  const now = new Date();
+  const code = `${now.getMonth()+1}${now.getDate()}-${now.getHours()}${String(now.getMinutes()).padStart(2,"0")}-${snapshot.n}`;
+  const memo = [
+    `注文メモ ${code}`,
+    `コピー数: ${snapshot.n}`,
+    `図形色: ${simName}`,
+    `中央ビジュー: ${bijouName}`,
+    `角R: ${Math.round(snapshot.roundRadius)}px固定`,
+    `頂点: ${ptsText}`,
+    `※この画面をスクショして店員に見せてください。`
+  ].join("\n");
+  try{ localStorage.setItem("kirakira_last_order_memo", memo); }catch(e){}
+  openInfoModal("店員に見せる", `<p>この画面をスクショするか、そのまま店員に見せてください。</p><div class="memoBox">${htmlEscape(memo)}</div>`);
+}
+
+
+function triToReal(u,v){ return {x:u+v/2, y:SQ3*v/2}; }
+function realToTri(x,y){ const v = 2*y/SQ3; const u = x - v/2; return {u,v}; }
+function vertexName(i){ return i < 26 ? String.fromCharCode(65+i) : `P${i+1}`; }
+function fullPoint(i){ const p = vertices[i]; const r = triToReal(p.u,p.v); return {idx:i,name:vertexName(i),u:p.u,v:p.v,x:r.x,y:r.y}; }
+function allPoints(){ return vertices.map((_,i)=>fullPoint(i)); }
+function clamp(n,min,max){ return Math.max(min, Math.min(max,n)); }
+function sameUV(a,b){ return a && b && a.u===b.u && a.v===b.v; }
+
+function worldToScreen(p){
+  return { X: SVG_W/2 + (p.x - view.cx) * view.scale, Y: SVG_H/2 - (p.y - view.cy) * view.scale };
+}
+function screenToWorld(s){
+  return { x: view.cx + (s.X - SVG_W/2) / view.scale, y: view.cy - (s.Y - SVG_H/2) / view.scale };
+}
+function pointerToSvg(ev){
+  const svg = document.getElementById("svg");
+  const pt = svg.createSVGPoint();
+  pt.x = ev.clientX;
+  pt.y = ev.clientY;
+  const ctm = svg.getScreenCTM();
+  if(!ctm) return null;
+  const p = pt.matrixTransform(ctm.inverse());
+  return {X:p.x, Y:p.y};
+}
+function nearestLatticeFromWorld(x,y){
+  const t = realToTri(x,y);
+  const u0 = Math.round(t.u);
+  const v0 = Math.round(t.v);
+  let best = null;
+  for(let du=-2; du<=2; du++){
+    for(let dv=-2; dv<=2; dv++){
+      const u = u0 + du;
+      const v = v0 + dv;
+      const r = triToReal(u,v);
+      const d = Math.hypot(r.x-x, r.y-y);
+      if(!best || d < best.d) best = {u,v,x:r.x,y:r.y,d};
+    }
+  }
+  return best;
+}
+function nearestVertexAtScreen(s){
+  let best = null;
+  for(let i=0; i<vertices.length; i++){
+    const p = fullPoint(i);
+    const m = worldToScreen(p);
+    const d = Math.hypot(m.X - s.X, m.Y - s.Y);
+    if(!best || d < best.d) best = {i,d};
+  }
+  return best;
+}
+
+function setStatus(txt){ document.getElementById("status").textContent = txt; }
+function markSimulationChanged(){
+  if(simAnimationId !== null){ cancelAnimationFrame(simAnimationId); simAnimationId = null; }
+  if(simHasResult){
+    const st = document.getElementById("simStatus");
+    if(st) st.textContent = "かたちを変えました。✨ スタート で新しく表示してね。";
+  }
+}
+function goSimulationScreen(){
+  syncOriginSelect();
+  document.getElementById("editScreen").classList.remove("active");
+  document.getElementById("simScreen").classList.add("active");
+  if(!simHasResult) drawSimText("✨ スタート を押してね");
+}
+function goEditScreen(){
+  document.getElementById("simScreen").classList.remove("active");
+  document.getElementById("editScreen").classList.add("active");
+  requestAnimationFrame(drawAll);
+}
+
+function svgPointerDown(ev){
+  ev.preventDefault();
+  const s = pointerToSvg(ev);
+  if(!s) return;
+  lastPointer = s;
+  const hit = nearestVertexAtScreen(s);
+  if(hit && hit.d <= 28){
+    selectedIndex = hit.i;
+    dragIndex = hit.i;
+    document.getElementById("svg").setPointerCapture?.(ev.pointerId);
+    updateVertexFromPointer(dragIndex, s);
+  }else{
+    const w = screenToWorld(s);
+    const g = nearestLatticeFromWorld(w.x,w.y);
+    setStatus(`点を動かすには、カラフルな丸をつかんでね。近くの格子：(${g.u}, ${g.v})`);
+    drawAll();
+  }
+}
+function svgPointerMove(ev){
+  if(dragIndex === null) return;
+  ev.preventDefault();
+  const s = pointerToSvg(ev);
+  if(!s) return;
+  lastPointer = s;
+  updateVertexFromPointer(dragIndex, s);
+}
+function svgPointerUp(ev){
+  if(dragIndex !== null){
+    dragIndex = null;
+    document.getElementById("svg").releasePointerCapture?.(ev.pointerId);
+    drawAll();
+  }
+}
+function updateVertexFromPointer(i, s){
+  const w = screenToWorld(s);
+  const g = nearestLatticeFromWorld(w.x,w.y);
+  const old = vertices[i];
+  selectedIndex = i;
+  if(!sameUV(old,g)){
+    vertices[i] = {u:g.u, v:g.v};
+    setStatus(`${vertexName(i)} = (${g.u}, ${g.v})`);
+    markSimulationChanged();
+  }
+  drawAll();
+}
+
+function uniqueCandidateNear(u,v){
+  const occupied = new Set(vertices.map(p=>`${p.u},${p.v}`));
+  if(!occupied.has(`${u},${v}`)) return {u,v};
+  const dirs = [[1,0],[0,1],[-1,1],[-1,0],[0,-1],[1,-1],[1,1],[-1,-1]];
+  for(let r=1;r<=8;r++){
+    for(const [du,dv] of dirs){
+      const nu=u+du*r, nv=v+dv*r;
+      if(!occupied.has(`${nu},${nv}`)) return {u:nu,v:nv};
+    }
+  }
+  return {u:u+1,v};
+}
+function insertAfterSelected(){
+  const n = vertices.length;
+  const i = selectedIndex;
+  const j = (i+1)%n;
+  const P = triToReal(vertices[i].u, vertices[i].v);
+  const Q = triToReal(vertices[j].u, vertices[j].v);
+  const mid = {x:(P.x+Q.x)/2, y:(P.y+Q.y)/2};
+  let g = nearestLatticeFromWorld(mid.x, mid.y);
+  g = uniqueCandidateNear(g.u,g.v);
+  vertices.splice(i+1,0,{u:g.u,v:g.v});
+  selectedIndex = i+1;
+  drawAll();
+  syncOriginSelect();
+  markSimulationChanged();
+  setStatus(`${vertexName(selectedIndex)} を追加しました。ドラッグで動かせます。`);
+}
+function deleteSelected(){
+  if(vertices.length <= 3){
+    alert("点は3つより少なくできません。");
+    return;
+  }
+  const removed = vertexName(selectedIndex);
+  vertices.splice(selectedIndex,1);
+  selectedIndex = clamp(selectedIndex,0,vertices.length-1);
+  drawAll();
+  syncOriginSelect();
+  markSimulationChanged();
+  setStatus(`${removed} を削除しました。`);
+}
+function resetDefault(){
+  vertices = [
+    {u:0, v:0},
+    {u:1, v:0},
+    {u:1, v:1},
+    {u:0, v:1}
+  ];
+  selectedIndex = 0;
+  lastPointer = null;
+  view = {cx: 0.75, cy: 0.433, scale: 120};
+  drawAll();
+  syncOriginSelect();
+  markSimulationChanged();
+  setStatus("初期配置：いちばん小さいひし形に戻しました。");
+}
+function zoom(factor){
+  view.scale = Math.max(8, Math.min(120, view.scale / factor));
+  drawAll();
+}
+
+function drawAll(){
+  const svg = document.getElementById("svg");
+  svg.innerHTML = "";
+
+  const worldLeft = view.cx - SVG_W/2/view.scale;
+  const worldRight = view.cx + SVG_W/2/view.scale;
+  const worldBottom = view.cy - SVG_H/2/view.scale;
+  const worldTop = view.cy + SVG_H/2/view.scale;
+  const triCorners = [
+    realToTri(worldLeft, worldBottom), realToTri(worldLeft, worldTop),
+    realToTri(worldRight, worldBottom), realToTri(worldRight, worldTop)
+  ];
+  const uMin = Math.floor(Math.min(...triCorners.map(p=>p.u))-4);
+  const uMax = Math.ceil(Math.max(...triCorners.map(p=>p.u))+4);
+  const vMin = Math.floor(Math.min(...triCorners.map(p=>p.v))-4);
+  const vMax = Math.ceil(Math.max(...triCorners.map(p=>p.v))+4);
+
+  const gridGroup=document.createElementNS(SVG_NS,"g");
+  gridGroup.setAttribute("stroke-linecap","round");
+  svg.appendChild(gridGroup);
+  function appendGridLine(u1,v1,u2,v2){
+    const p1=worldToScreen(triToReal(u1,v1));
+    const p2=worldToScreen(triToReal(u2,v2));
+    if((p1.X < -40 && p2.X < -40) || (p1.X > SVG_W+40 && p2.X > SVG_W+40) ||
+       (p1.Y < -40 && p2.Y < -40) || (p1.Y > SVG_H+40 && p2.Y > SVG_H+40)) return;
+    const line=document.createElementNS(SVG_NS,"line");
+    line.setAttribute("x1",p1.X); line.setAttribute("y1",p1.Y);
+    line.setAttribute("x2",p2.X); line.setAttribute("y2",p2.Y);
+    line.setAttribute("stroke","#63aeca");
+    line.setAttribute("stroke-width","1.15");
+    line.setAttribute("opacity","0.52");
+    gridGroup.appendChild(line);
+  }
+  for(let u=uMin; u<=uMax; u++){
+    for(let v=vMin; v<=vMax; v++){
+      appendGridLine(u,v,u+1,v);
+      appendGridLine(u,v,u,v+1);
+      appendGridLine(u,v,u+1,v-1);
+    }
+  }
+  for(let u=uMin; u<=uMax; u++){
+    for(let v=vMin; v<=vMax; v++){
+      const r=triToReal(u,v);
+      const m=worldToScreen(r);
+      if(m.X>=-20 && m.X<=SVG_W+20 && m.Y>=-20 && m.Y<=SVG_H+20){
+        const c=document.createElementNS(SVG_NS,"circle");
+        c.setAttribute("cx",m.X); c.setAttribute("cy",m.Y); c.setAttribute("r",3.2);
+        c.setAttribute("fill", (u+v)%3===0 ? "#1696bd" : "#8d7df0");
+        c.setAttribute("opacity","0.76");
+        svg.appendChild(c);
+      }
+    }
+  }
+
+  const pts = allPoints();
+  if(pts.length >= 3){
+    const poly=document.createElementNS(SVG_NS,"polygon");
+    poly.setAttribute("points", pts.map(p=>{const m=worldToScreen(p); return `${m.X},${m.Y}`}).join(" "));
+    poly.setAttribute("fill","rgba(255, 159, 28, 0.16)");
+    poly.setAttribute("stroke","#ff7aa8");
+    poly.setAttribute("stroke-width","4");
+    poly.setAttribute("stroke-linejoin","round");
+    svg.appendChild(poly);
+  }
+  if(lastPointer){
+    const l1=document.createElementNS(SVG_NS,"line");
+    l1.setAttribute("x1",lastPointer.X-6); l1.setAttribute("y1",lastPointer.Y);
+    l1.setAttribute("x2",lastPointer.X+6); l1.setAttribute("y2",lastPointer.Y);
+    l1.setAttribute("stroke","#ff5fa2"); l1.setAttribute("stroke-width","2");
+    svg.appendChild(l1);
+    const l2=document.createElementNS(SVG_NS,"line");
+    l2.setAttribute("x1",lastPointer.X); l2.setAttribute("y1",lastPointer.Y-6);
+    l2.setAttribute("x2",lastPointer.X); l2.setAttribute("y2",lastPointer.Y+6);
+    l2.setAttribute("stroke","#ff5fa2"); l2.setAttribute("stroke-width","2");
+    svg.appendChild(l2);
+  }
+  for(const p of pts){
+    const m=worldToScreen(p);
+    if(p.idx === selectedIndex){
+      const ring=document.createElementNS(SVG_NS,"circle");
+      ring.setAttribute("cx",m.X); ring.setAttribute("cy",m.Y); ring.setAttribute("r",19);
+      ring.setAttribute("fill","rgba(255,255,255,.62)");
+      ring.setAttribute("stroke",pointColor(p.idx));
+      ring.setAttribute("stroke-width","5");
+      svg.appendChild(ring);
+    }
+    const c=document.createElementNS(SVG_NS,"circle");
+    c.setAttribute("cx",m.X); c.setAttribute("cy",m.Y); c.setAttribute("r",12);
+    c.setAttribute("fill",pointColor(p.idx));
+    c.setAttribute("stroke","white");
+    c.setAttribute("stroke-width","4");
+    svg.appendChild(c);
+
+    const letter=document.createElementNS(SVG_NS,"text");
+    letter.setAttribute("x",m.X);
+    letter.setAttribute("y",m.Y+5);
+    letter.setAttribute("text-anchor","middle");
+    letter.setAttribute("font-size","16");
+    letter.setAttribute("font-weight","900");
+    letter.setAttribute("fill","white");
+    letter.textContent = p.name.length === 1 ? p.name : "•";
+    svg.appendChild(letter);
+
+    const t=document.createElementNS(SVG_NS,"text");
+    t.setAttribute("x",m.X+15); t.setAttribute("y",m.Y-15);
+    t.setAttribute("font-size","17");
+    t.setAttribute("font-weight", p.idx===selectedIndex ? "900" : "800");
+    t.setAttribute("fill","#4b3d59");
+    t.textContent = `${p.name}`;
+    svg.appendChild(t);
+  }
+}
+
+function syncOriginSelect(){ /* 2画面目では中心点を選ばない。内部ではAを中心にする。 */ }
+function rotateAround(P, O, deg){
+  const rad = deg * Math.PI / 180;
+  const c = Math.cos(rad), s = Math.sin(rad);
+  const dx = P.x - O.x, dy = P.y - O.y;
+  return {name:P.name, idx:P.idx, x:O.x + dx*c - dy*s, y:O.y + dx*s + dy*c};
+}
+function readSimulationSnapshot(){
+  const pts = allPoints().map(p => ({...p}));
+  if(pts.length < 2) return null;
+  const originIndex = 0; // 画面では選ばせず、Aを中心に固定
+  const O = pts[originIndex];
+  let n = Math.round(Number(document.getElementById("simCount")?.value ?? 6));
+  if(!Number.isFinite(n) || n < 1) n = 1;
+  n = clamp(n,1,72);
+  document.getElementById("simCount").value = n;
+  const offset = 0; // はじまり角は表示せず、0度固定
+  const color = selectedSimColor();
+  const bijouColor = selectedBijouColor();
+  const bijouName = selectedBijouName();
+  const roundRadius = selectedRoundRadius();
+
+  const units = [];
+  const allRot = [];
+  for(let i=0; i<n; i++){
+    const deg = offset + 360 * i / n;
+    const unitPts = pts.map(p => rotateAround(p, O, deg));
+    units.push({deg, pts:unitPts});
+    allRot.push(...unitPts);
+  }
+  allRot.push(O);
+  const xs = allRot.map(p=>p.x), ys = allRot.map(p=>p.y);
+  const minx=Math.min(...xs), maxx=Math.max(...xs);
+  const miny=Math.min(...ys), maxy=Math.max(...ys);
+  const pad=48;
+  const spanx=Math.max(1e-9, maxx-minx);
+  const spany=Math.max(1e-9, maxy-miny);
+  const scale=Math.min((SIM_W-2*pad)/spanx, (SIM_H-2*pad)/spany);
+  const cx=(minx+maxx)/2, cy=(miny+maxy)/2;
+  return {pts, originIndex, O, n, offset, color, bijouColor, bijouName, roundRadius, units, allRot, scale, cx, cy};
+}
+function simMap(snapshot, p){
+  return { X:SIM_W/2 + (p.x-snapshot.cx)*snapshot.scale, Y:SIM_H/2 - (p.y-snapshot.cy)*snapshot.scale };
+}
+function drawSimText(text){
+  const sim = document.getElementById("simSvg");
+  if(!sim) return;
+  sim.innerHTML = "";
+  const t=document.createElementNS(SVG_NS,"text");
+  t.setAttribute("x",SIM_W/2);
+  t.setAttribute("y",SIM_H/2);
+  t.setAttribute("text-anchor","middle");
+  t.setAttribute("font-size","24");
+  t.setAttribute("font-weight","900");
+  t.setAttribute("fill","#667085");
+  t.textContent = text;
+  sim.appendChild(t);
+}
+function easeOutCubic(t){ t=clamp(t,0,1); return 1 - Math.pow(1-t,3); }
+function easeInOutCubic(t){ t=clamp(t,0,1); return t < .5 ? 4*t*t*t : 1 - Math.pow(-2*t+2,3)/2; }
+function easeOutBack(t){
+  t=clamp(t,0,1);
+  const c1 = 1.70158;
+  const c3 = c1 + 1;
+  return 1 + c3*Math.pow(t-1,3) + c1*Math.pow(t-1,2);
+}
+function addSvgDefs(sim, snapshot){
+  const defs=document.createElementNS(SVG_NS,"defs");
+  const glow=document.createElementNS(SVG_NS,"filter");
+  glow.setAttribute("id","glowFx");
+  glow.setAttribute("x","-60%"); glow.setAttribute("y","-60%");
+  glow.setAttribute("width","220%"); glow.setAttribute("height","220%");
+  const blur=document.createElementNS(SVG_NS,"feGaussianBlur");
+  blur.setAttribute("stdDeviation","4");
+  blur.setAttribute("result","blur");
+  glow.appendChild(blur);
+  const merge=document.createElementNS(SVG_NS,"feMerge");
+  const m1=document.createElementNS(SVG_NS,"feMergeNode"); m1.setAttribute("in","blur");
+  const m2=document.createElementNS(SVG_NS,"feMergeNode"); m2.setAttribute("in","SourceGraphic");
+  merge.appendChild(m1); merge.appendChild(m2); glow.appendChild(merge);
+  defs.appendChild(glow);
+
+  const grad=document.createElementNS(SVG_NS,"radialGradient");
+  grad.setAttribute("id","stageGlow");
+  grad.setAttribute("cx","50%"); grad.setAttribute("cy","50%"); grad.setAttribute("r","62%");
+  const s1=document.createElementNS(SVG_NS,"stop"); s1.setAttribute("offset","0%"); s1.setAttribute("stop-color", snapshot.color); s1.setAttribute("stop-opacity","0.22");
+  const s2=document.createElementNS(SVG_NS,"stop"); s2.setAttribute("offset","46%"); s2.setAttribute("stop-color","#ffffff"); s2.setAttribute("stop-opacity","0.42");
+  const s3=document.createElementNS(SVG_NS,"stop"); s3.setAttribute("offset","100%"); s3.setAttribute("stop-color","#ffffff"); s3.setAttribute("stop-opacity","0");
+  grad.appendChild(s1); grad.appendChild(s2); grad.appendChild(s3);
+  defs.appendChild(grad);
+  sim.appendChild(defs);
+}
+function drawBurstBackground(sim, snapshot, center, elapsed, totalMs, maxR){
+  const bg=document.createElementNS(SVG_NS,"rect");
+  bg.setAttribute("x","0"); bg.setAttribute("y","0"); bg.setAttribute("width",SIM_W); bg.setAttribute("height",SIM_H);
+  bg.setAttribute("fill","url(#stageGlow)");
+  bg.setAttribute("opacity", String(.35 + .20*Math.sin(elapsed/180)));
+  sim.appendChild(bg);
+
+  const ringBase = maxR || 120;
+  for(let k=0;k<4;k++){
+    const p = (elapsed/900 + k*.25) % 1;
+    const r = 16 + ringBase * (.18 + .95*p);
+    const ring=document.createElementNS(SVG_NS,"circle");
+    ring.setAttribute("cx",center.X); ring.setAttribute("cy",center.Y);
+    ring.setAttribute("r",r);
+    ring.setAttribute("fill","none");
+    ring.setAttribute("stroke", k%2 ? snapshot.color : "#ffffff");
+    ring.setAttribute("stroke-width", String(4 - 2.4*p));
+    ring.setAttribute("opacity", String((1-p)*.42));
+    sim.appendChild(ring);
+  }
+
+  const rayCount = 18;
+  const spin = elapsed * .035;
+  for(let i=0;i<rayCount;i++){
+    const a = (360/rayCount*i + spin) * Math.PI/180;
+    const r1 = 22 + ringBase*.10;
+    const r2 = ringBase*(.62 + .22*Math.sin(elapsed/260+i));
+    const line=document.createElementNS(SVG_NS,"line");
+    line.setAttribute("x1",center.X + Math.cos(a)*r1);
+    line.setAttribute("y1",center.Y + Math.sin(a)*r1);
+    line.setAttribute("x2",center.X + Math.cos(a)*r2);
+    line.setAttribute("y2",center.Y + Math.sin(a)*r2);
+    line.setAttribute("stroke", i%3===0 ? "#ffffff" : snapshot.color);
+    line.setAttribute("stroke-width", i%3===0 ? "2.2" : "1.4");
+    line.setAttribute("opacity", i%3===0 ? ".55" : ".28");
+    line.setAttribute("stroke-linecap","round");
+    sim.appendChild(line);
+  }
+}
+function addSparkles(sim, snapshot, center, elapsed, maxR, intensity=1){
+  const emojis = ["✨","✦","✧","★"];
+  const count = 12;
+  for(let i=0;i<count;i++){
+    const phase = (elapsed/760 + i*.137) % 1;
+    const a = (i*137.5 + elapsed*.045) * Math.PI/180;
+    const r = (maxR || 120) * (.22 + .78*phase);
+    const t=document.createElementNS(SVG_NS,"text");
+    t.setAttribute("x",center.X + Math.cos(a)*r);
+    t.setAttribute("y",center.Y + Math.sin(a)*r);
+    t.setAttribute("text-anchor","middle");
+    t.setAttribute("dominant-baseline","middle");
+    t.setAttribute("font-size",String(13 + 17*(1-phase)*intensity));
+    t.setAttribute("opacity",String((1-phase)*.78*intensity));
+    t.textContent = emojis[i % emojis.length];
+    sim.appendChild(t);
+  }
+}
+
+function roundedPolygonPath(screenPts, radius, strength=1){
+  const pts = screenPts.filter(p => Number.isFinite(p.X) && Number.isFinite(p.Y));
+  const n = pts.length;
+  if(n < 3) return "";
+  const corners = pts.map((p,i)=>{
+    const prev = pts[(i+n-1)%n];
+    const next = pts[(i+1)%n];
+    const vx1 = prev.X - p.X, vy1 = prev.Y - p.Y;
+    const vx2 = next.X - p.X, vy2 = next.Y - p.Y;
+    const d1 = Math.hypot(vx1,vy1);
+    const d2 = Math.hypot(vx2,vy2);
+    const cornerLimit = 0.10 + 0.39*clamp(strength,0,1);
+    const r = Math.max(0, Math.min(radius, d1*cornerLimit, d2*cornerLimit));
+    if(d1 < EPS || d2 < EPS || r < .1){
+      return {inP:{X:p.X,Y:p.Y}, outP:{X:p.X,Y:p.Y}, p};
+    }
+    return {
+      inP:{X:p.X + vx1/d1*r, Y:p.Y + vy1/d1*r},
+      outP:{X:p.X + vx2/d2*r, Y:p.Y + vy2/d2*r},
+      p
+    };
+  });
+  let d = `M ${corners[0].outP.X.toFixed(2)} ${corners[0].outP.Y.toFixed(2)}`;
+  for(let i=1; i<n; i++){
+    d += ` L ${corners[i].inP.X.toFixed(2)} ${corners[i].inP.Y.toFixed(2)}`;
+    d += ` Q ${corners[i].p.X.toFixed(2)} ${corners[i].p.Y.toFixed(2)} ${corners[i].outP.X.toFixed(2)} ${corners[i].outP.Y.toFixed(2)}`;
+  }
+  d += ` L ${corners[0].inP.X.toFixed(2)} ${corners[0].inP.Y.toFixed(2)}`;
+  d += ` Q ${corners[0].p.X.toFixed(2)} ${corners[0].p.Y.toFixed(2)} ${corners[0].outP.X.toFixed(2)} ${corners[0].outP.Y.toFixed(2)} Z`;
+  return d;
+}
+
+function drawUnitWithDrama(sim, snapshot, unit, center, p, i){
+  if(p <= 0) return;
+  const ep = easeOutBack(p);
+  const op = easeOutCubic(p);
+  const localScale = clamp(.06 + .94*ep, .04, 1.18);
+  const extraRot = (1 - easeOutCubic(p)) * (110 + 18*(i%2 ? -1 : 1));
+  const col = snapshot.color;
+  const g=document.createElementNS(SVG_NS,"g");
+  g.setAttribute("transform",`translate(${center.X} ${center.Y}) rotate(${extraRot}) scale(${localScale}) translate(${-center.X} ${-center.Y})`);
+  g.setAttribute("opacity",String(clamp(.16 + .84*op,0,1)));
+  if(unit.pts.length >= 3){
+    const screenPts = unit.pts.map(pt => simMap(snapshot, pt));
+    const roundR = snapshot.roundRadius;
+    const pathD = roundedPolygonPath(screenPts, roundR, 1);
+
+    const shadow=document.createElementNS(SVG_NS,"path");
+    shadow.setAttribute("d", pathD);
+    shadow.setAttribute("fill",col + "33");
+    shadow.setAttribute("stroke",col);
+    shadow.setAttribute("stroke-width",String(9 - 3*op));
+    shadow.setAttribute("stroke-linejoin","round");
+    shadow.setAttribute("stroke-linecap","round");
+    shadow.setAttribute("filter","url(#glowFx)");
+    shadow.setAttribute("opacity",String(.34*(1-op)+.15));
+    g.appendChild(shadow);
+
+    const poly=document.createElementNS(SVG_NS,"path");
+    poly.setAttribute("d", pathD);
+    poly.setAttribute("fill",col + "36");
+    poly.setAttribute("stroke",col);
+    poly.setAttribute("stroke-width",String(4.8 - 2.1*op));
+    poly.setAttribute("stroke-linejoin","round");
+    poly.setAttribute("stroke-linecap","round");
+    g.appendChild(poly);
+  }
+  const end = unit.pts[(snapshot.originIndex + 1) % unit.pts.length] || unit.pts[0];
+  const mEnd = simMap(snapshot,end);
+  const line=document.createElementNS(SVG_NS,"line");
+  line.setAttribute("x1",center.X); line.setAttribute("y1",center.Y);
+  line.setAttribute("x2",mEnd.X); line.setAttribute("y2",mEnd.Y);
+  line.setAttribute("stroke",col);
+  line.setAttribute("stroke-width","1.6");
+  line.setAttribute("opacity",String(.28 + .36*op));
+  g.appendChild(line);
+  sim.appendChild(g);
+
+  if(p > .18 && p < .88){
+    const cx = unit.pts.reduce((a,pt)=>a+pt.x,0)/unit.pts.length;
+    const cy = unit.pts.reduce((a,pt)=>a+pt.y,0)/unit.pts.length;
+    const sm = simMap(snapshot,{x:cx,y:cy});
+    const sparkle=document.createElementNS(SVG_NS,"text");
+    sparkle.setAttribute("x",sm.X);
+    sparkle.setAttribute("y",sm.Y);
+    sparkle.setAttribute("text-anchor","middle");
+    sparkle.setAttribute("dominant-baseline","middle");
+    sparkle.setAttribute("font-size",String(24 + 24*Math.sin(p*Math.PI)));
+    sparkle.setAttribute("opacity",String(Math.sin(p*Math.PI)));
+    sparkle.textContent = i%2 ? "💫" : "✨";
+    sim.appendChild(sparkle);
+  }
+}
+function drawJewel(sim, snapshot, center, p){
+  p = clamp(p,0,1);
+  const ep = easeOutBack(p);
+  const pulse = p >= 1 ? .5 + .5*Math.sin(performance.now()/210) : Math.sin(p*Math.PI);
+  const haloR = 26 + 34*Math.max(0,1-p);
+  const halo=document.createElementNS(SVG_NS,"circle");
+  halo.setAttribute("cx",center.X); halo.setAttribute("cy",center.Y);
+  halo.setAttribute("r",haloR);
+  halo.setAttribute("fill","none");
+  halo.setAttribute("stroke", snapshot.bijouColor === "#ffffff" ? "#94a3b8" : snapshot.bijouColor);
+  halo.setAttribute("stroke-width",String(5 - 2*p));
+  halo.setAttribute("opacity",String(.12 + .42*(1-p) + .12*pulse));
+  sim.appendChild(halo);
+
+  const jewelBack=document.createElementNS(SVG_NS,"circle");
+  jewelBack.setAttribute("cx",center.X); jewelBack.setAttribute("cy",center.Y);
+  jewelBack.setAttribute("r",String(19 + 5*pulse));
+  jewelBack.setAttribute("fill","rgba(255,255,255,.84)");
+  jewelBack.setAttribute("stroke", snapshot.color);
+  jewelBack.setAttribute("stroke-width","3");
+  jewelBack.setAttribute("filter","url(#glowFx)");
+  sim.appendChild(jewelBack);
+
+  const r = clamp(4 + 12*ep, 4, 17);
+  const jewel=document.createElementNS(SVG_NS,"circle");
+  jewel.setAttribute("cx",center.X); jewel.setAttribute("cy",center.Y);
+  jewel.setAttribute("r",r);
+  jewel.setAttribute("fill", snapshot.bijouColor);
+  jewel.setAttribute("stroke", snapshot.bijouColor === "#ffffff" ? "#94a3b8" : "white");
+  jewel.setAttribute("stroke-width","4");
+  sim.appendChild(jewel);
+
+  const shine=document.createElementNS(SVG_NS,"circle");
+  shine.setAttribute("cx",center.X-r*.35); shine.setAttribute("cy",center.Y-r*.38);
+  shine.setAttribute("r",Math.max(2.5,r*.26));
+  shine.setAttribute("fill", snapshot.bijouColor === "#ffffff" ? "#e0f2fe" : "rgba(255,255,255,.88)");
+  sim.appendChild(shine);
+
+  const flash=document.createElementNS(SVG_NS,"text");
+  flash.setAttribute("x",center.X);
+  flash.setAttribute("y",center.Y - 34 - 10*pulse);
+  flash.setAttribute("text-anchor","middle");
+  flash.setAttribute("font-size",String(22 + 12*pulse));
+  flash.setAttribute("opacity",String(.6 + .3*pulse));
+  flash.textContent = "✦";
+  sim.appendChild(flash);
+}
+
+function drawSimulationFrame(snapshot, elapsed, totalMs){
+  const sim = document.getElementById("simSvg");
+  if(!sim) return;
+  sim.innerHTML = "";
+  addSvgDefs(sim, snapshot);
+  const center = simMap(snapshot, snapshot.O);
+  const maxR = Math.max(...snapshot.allRot.map(p=>Math.hypot(p.x-snapshot.O.x, p.y-snapshot.O.y))) * snapshot.scale;
+  drawBurstBackground(sim, snapshot, center, elapsed, totalMs, maxR);
+
+  if(Number.isFinite(maxR) && maxR > 0){
+    const guide=document.createElementNS(SVG_NS,"circle");
+    guide.setAttribute("cx",center.X);
+    guide.setAttribute("cy",center.Y);
+    guide.setAttribute("r",maxR);
+    guide.setAttribute("fill","none");
+    guide.setAttribute("stroke", snapshot.color);
+    guide.setAttribute("stroke-dasharray","9 8");
+    guide.setAttribute("stroke-width","2");
+    guide.setAttribute("opacity","0.45");
+    sim.appendChild(guide);
+  }
+
+  const introMs = 360;
+  const staggerMs = Math.max(42, Math.min(125, 820 / Math.max(1, snapshot.n)));
+  const unitMs = 520;
+  const jewelStart = introMs + (snapshot.n-1)*staggerMs + unitMs*.78;
+  for(let i=0; i<snapshot.units.length; i++){
+    const p = clamp((elapsed - introMs - i*staggerMs) / unitMs, 0, 1);
+    drawUnitWithDrama(sim, snapshot, snapshot.units[i], center, p, i);
+  }
+  addSparkles(sim, snapshot, center, elapsed, maxR, elapsed < totalMs ? 1 : .55);
+
+  const jp = clamp((elapsed - jewelStart) / 720, 0, 1);
+  drawJewel(sim, snapshot, center, jp);
+
+  if(elapsed > totalMs - 900){
+    const label=document.createElementNS(SVG_NS,"text");
+    label.setAttribute("x",SIM_W/2);
+    label.setAttribute("y",SIM_H-28);
+    label.setAttribute("text-anchor","middle");
+    label.setAttribute("font-size","20");
+    label.setAttribute("font-weight","900");
+    label.setAttribute("fill","#4b3d59");
+    label.textContent = `できあがり！ ${snapshot.n}こコピー / 中央ビジュー：${snapshot.bijouName}`;
+    sim.appendChild(label);
+  }
+}
+function runSimulation(){
+  const snapshot = readSimulationSnapshot();
+  if(!snapshot){ drawSimText("点が足りません"); return; }
+  if(simAnimationId !== null){ cancelAnimationFrame(simAnimationId); simAnimationId = null; }
+  simHasResult = true;
+  const st = document.getElementById("simStatus");
+  if(st) st.textContent = `スタート！ まんなかから ${snapshot.n}こに広がります...`;
+  const introMs = 360;
+  const staggerMs = Math.max(42, Math.min(125, 820 / Math.max(1, snapshot.n)));
+  const unitMs = 520;
+  const totalMs = introMs + (snapshot.n-1)*staggerMs + unitMs + 950;
+  const start = performance.now();
+  function step(now){
+    const elapsed = now - start;
+    drawSimulationFrame(snapshot, elapsed, totalMs);
+    if(elapsed < totalMs){
+      simAnimationId = requestAnimationFrame(step);
+    }else{
+      drawSimulationFrame(snapshot, totalMs, totalMs);
+      simAnimationId = null;
+      if(st) st.textContent = `完成！ ${snapshot.n}こコピーしました。中央ビジューは${snapshot.bijouName}。必要なら「店員に見せる」を押してください。`;
+    }
+  }
+  drawSimulationFrame(snapshot, 0, totalMs);
+  simAnimationId = requestAnimationFrame(step);
+}
+
+const svg = document.getElementById("svg");
+svg.addEventListener("pointerdown", svgPointerDown, {passive:false});
+svg.addEventListener("pointermove", svgPointerMove, {passive:false});
+svg.addEventListener("pointerup", svgPointerUp, {passive:false});
+svg.addEventListener("pointercancel", svgPointerUp, {passive:false});
+
+syncOriginSelect();
+drawAll();
+drawSimText("✨ スタート を押してね");
+setStatus("点をドラッグして、形を作ります。選んだ点は大きな輪で表示されます。");
+</script>
+</body>
+</html>
