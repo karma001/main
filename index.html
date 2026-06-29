@@ -174,6 +174,11 @@
   .colorChoice option[value="green"]{color:#16a34a}
   .colorChoice option[value="purple"]{color:#9333ea}
   .colorChoice option[value="white"]{color:#64748b}
+  .adultRoundPill{display:none}
+  .adultRoundPill.active{display:inline-flex}
+  input[type="range"]{accent-color:var(--pink);width:128px;min-height:28px}
+  input[type="checkbox"]{width:22px;height:22px;accent-color:var(--pink)}
+  .rangeValue{min-width:54px;text-align:right;font-family:ui-monospace,Consolas,"SFMono-Regular",monospace}
 
 
   .blastHint{
@@ -227,7 +232,7 @@
   <div class="topbar">
     <div>
       <h1><span class="bubble">🧩</span>かたちを作る</h1>
-      <p class="sub">点をドラッグして形を作ります。完成したら「店員に見せる」で相談できます。</p>
+      <p class="sub">点をドラッグして形を作ります。完成したら「つぎ：くるっと見る」で確認できます。</p>
     </div>
     <div class="topActions">
       <button class="soft" onclick="showInstallGuide()">📱 ホーム追加</button>
@@ -253,7 +258,7 @@
   <div class="topbar">
     <div>
       <h1><span class="bubble">🎠</span>くるっとシミュレーション</h1>
-      <p class="sub">作った形を回転コピーします。完成画面をスクショして店員に見せられます。</p>
+      <p class="sub">作った形を回転コピーします。色やコピー数を選んで確認できます。</p>
     </div>
     <button class="soft" onclick="goEditScreen()">◀ もどる</button>
   </div>
@@ -279,8 +284,14 @@
         <option value="white" selected>白</option>
       </select>
     </span>
+    <label class="pill">
+      <input id="adultMode" type="checkbox" onchange="toggleAdultMode()"> おとなよう
+    </label>
+    <span id="adultRoundPill" class="pill adultRoundPill">角R
+      <input id="roundRadius" type="range" min="0" max="120" value="70" step="1" oninput="updateRoundLabel()">
+      <span id="roundRadiusLabel" class="rangeValue">70px</span>
+    </span>
     <button class="primary" onclick="runSimulation()">✨ スタート</button>
-    <button class="blue" onclick="showOrderMemo()">📋 店員に見せる</button>
   </div>
   <div id="simStatus" class="statusLine simStatus">まだ：✨ スタート を押してね。</div>
 
@@ -332,7 +343,32 @@ function selectedBijouName(){
   return sel?.options?.[sel.selectedIndex]?.textContent || "白";
 }
 function selectedRoundRadius(){
-  return 70; // 角Rは固定値
+  const adult = document.getElementById("adultMode")?.checked;
+  if(!adult) return 70;
+  const v = Number(document.getElementById("roundRadius")?.value ?? 70);
+  return Number.isFinite(v) ? clamp(v, 0, 120) : 70;
+}
+function updateRoundLabel(){
+  const slider = document.getElementById("roundRadius");
+  const label = document.getElementById("roundRadiusLabel");
+  if(!slider || !label) return;
+  let v = Number(slider.value);
+  if(!Number.isFinite(v)) v = 70;
+  v = clamp(Math.round(v), 0, 120);
+  slider.value = v;
+  label.textContent = `${v}px`;
+}
+function toggleAdultMode(){
+  const adult = document.getElementById("adultMode")?.checked;
+  const pill = document.getElementById("adultRoundPill");
+  const slider = document.getElementById("roundRadius");
+  if(pill) pill.classList.toggle("active", !!adult);
+  if(!adult && slider){
+    slider.value = 70;
+    updateRoundLabel();
+  }else{
+    updateRoundLabel();
+  }
 }
 
 let view = {cx: 0.75, cy: 0.433, scale: 120};
@@ -384,27 +420,7 @@ function showInstallGuide(){
     <div class="memoBox">店頭手順：URLを開く → ホーム画面に追加 → 一度起動 → 機内モードで再起動テスト</div>
   `, canPrompt);
 }
-function htmlEscape(s){ return String(s).replace(/[&<>"']/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m])); }
-function showOrderMemo(){
-  const snapshot = readSimulationSnapshot();
-  if(!snapshot){ openInfoModal("店員に見せる", "<p>点が足りません。3点以上で形を作ってください。</p>"); return; }
-  const simName = document.getElementById("simColor")?.selectedOptions?.[0]?.textContent || "";
-  const bijouName = selectedBijouName();
-  const ptsText = snapshot.pts.map(p => `${p.name}=(${p.u},${p.v})`).join(" / ");
-  const now = new Date();
-  const code = `${now.getMonth()+1}${now.getDate()}-${now.getHours()}${String(now.getMinutes()).padStart(2,"0")}-${snapshot.n}`;
-  const memo = [
-    `注文メモ ${code}`,
-    `コピー数: ${snapshot.n}`,
-    `図形色: ${simName}`,
-    `中央ビジュー: ${bijouName}`,
-    `角R: ${Math.round(snapshot.roundRadius)}px固定`,
-    `頂点: ${ptsText}`,
-    `※この画面をスクショして店員に見せてください。`
-  ].join("\n");
-  try{ localStorage.setItem("kirakira_last_order_memo", memo); }catch(e){}
-  openInfoModal("店員に見せる", `<p>この画面をスクショするか、そのまま店員に見せてください。</p><div class="memoBox">${htmlEscape(memo)}</div>`);
-}
+
 
 
 function triToReal(u,v){ return {x:u+v/2, y:SQ3*v/2}; }
@@ -1056,7 +1072,7 @@ function runSimulation(){
     }else{
       drawSimulationFrame(snapshot, totalMs, totalMs);
       simAnimationId = null;
-      if(st) st.textContent = `完成！ ${snapshot.n}こコピーしました。中央ビジューは${snapshot.bijouName}。必要なら「店員に見せる」を押してください。`;
+      if(st) st.textContent = `完成！ ${snapshot.n}こコピーしました。中央ビジューは${snapshot.bijouName}。角Rは${Math.round(snapshot.roundRadius)}pxです。`;
     }
   }
   drawSimulationFrame(snapshot, 0, totalMs);
@@ -1070,6 +1086,7 @@ svg.addEventListener("pointerup", svgPointerUp, {passive:false});
 svg.addEventListener("pointercancel", svgPointerUp, {passive:false});
 
 syncOriginSelect();
+toggleAdultMode();
 drawAll();
 drawSimText("✨ スタート を押してね");
 setStatus("点をドラッグして、形を作ります。選んだ点は大きな輪で表示されます。");
